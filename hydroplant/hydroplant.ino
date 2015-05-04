@@ -32,8 +32,8 @@ boolean sentNotification = false;
 //WIFI SETTINGS, 2.4 GHZ B-Mode!
 //If conection is not working, check that your wireless router is configured to support B-mode
 //Usually B/G/N-Mixed which should support all connection types (20Mhz seems to be preferred for B-Mode)
-#define SSID "dymaxion-guest"
-#define PASS "buckm1nst3r!"
+#define SSID "change-this"
+#define PASS "change-me"
 
 //pushingbox device id, used to send email or mobile notifications (if water level is low -> refill needed)
 #define DEVID "v06CCA7D5005850A"
