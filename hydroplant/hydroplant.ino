@@ -40,8 +40,8 @@ boolean sentNotification = false;
 //create an account on https://www.pushingbox.com (free) - you can push notifications to various services
 //like e-mail, twitter, android and iphone notification
 
-//enable debug -> uncomment to disable debug
-//#define DEBUG 1
+//DEBUG SETTINGS
+//#define DEBUG 1 //uncomment to enable debug
 
 #ifdef DEBUG
 #define DEBUG_PRINT(x)     Serial.print(x)
