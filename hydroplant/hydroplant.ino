@@ -64,8 +64,8 @@ int waterSense = 0; //stores water level sensed value (0-1024)
 int waterLowLimit = 20; //stop pump -> send alert, make slightly higher then 0 to avoid jitter 
 int soilMoistureLimit = 150; //change this according to your plant (0-100 is really dry, 350-500 is rather normal)
 
-unsigned long waterPumpDuration = 20000; //in ms -> adjust the duration how much water should be bumped, depending on plant type and size
-unsigned long notificationDuration = 14400000; //in ms -> adjust the duration in which interval you would like to receive a notification if plant needs water 
+unsigned int waterPumpDuration = 20000; //in ms -> adjust the duration how much water should be bumped, depending on plant type and size
+unsigned int notificationDuration = 14400000; //in ms -> adjust the duration in which interval you would like to receive a notification if plant needs water 
 
 //led if wifi is ready
 int ledWifiPin = 2;
