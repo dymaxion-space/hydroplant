@@ -33,7 +33,7 @@ boolean sentNotification = false;
 //If conection is not working, check that your wireless router is configured to support B-mode
 //Usually B/G/N-Mixed which should support all connection types (20Mhz seems to be preferred for B-Mode)
 #define SSID "change-this"
-#define PASS "change-me"
+#define PASS "change-me!"
 
 //pushingbox device id, used to send email or mobile notifications (if water level is low -> refill needed)
 #define DEVID "v06CCA7D5005850A"
@@ -41,7 +41,7 @@ boolean sentNotification = false;
 //like e-mail, twitter, android and iphone notification
 
 //DEBUG SETTINGS
-//#define DEBUG 1 //uncomment to enable debug
+#define DEBUG 1 //uncomment to enable debug
 
 #ifdef DEBUG
 #define DEBUG_PRINT(x)     Serial.print(x)
@@ -55,26 +55,38 @@ boolean sentNotification = false;
 
 
 //custom sensors pin
-int soilPin = A2; //soil sensor analog input
-int waterPin = A3; //water level sensor analog input
+int soilPin = A8; //soil sensor analog input
+int waterPin = A6; //water level sensor analog input
+
+
+//potentiometer controls
 int soilPotPin = A1; //set the humidity limit with a potentiometer
+int waterPotPin = A2; //set the duration of pump (needs some mapping)
+
+//sensor power pins
+int waterSensorPowerPin1 =  3; 
+int waterSensorPowerPin2 = 5; 
+
+int soilSensorPowerPin1 = 7; 
+int soilSensorPowerPin2 = 9; 
 
 int soilSense = 0; //stores soil moisture sensed value (0-1024)
 int waterSense = 0; //stores water level sensed value (0-1024)
 int waterLowLimit = 20; //stop pump -> send alert, make slightly higher then 0 to avoid jitter 
 int soilMoistureLimit = 150; //change this according to your plant (0-100 is really dry, 350-500 is rather normal)
+int waterPumpingLimit = 200;
 
-unsigned long waterPumpDuration = 20000; //in ms -> adjust the duration how much water should be bumped, depending on plant type and size
+unsigned long waterPumpDuration = 60000; //in ms, controlled via potentiometer (5000-6000 ms)
 unsigned long notificationDuration = 14400000; //in ms -> adjust the duration in which interval you would like to receive a notification if plant needs water 
 
 //led if wifi is ready
 int ledWifiPin = 2;
 
 //water warning light
-int ledWaterPin = 3;
+int ledWaterPin = 6;
 
 //water pump pin
-int pumpPin = 4;
+int pumpPin = 21;
 boolean startPumping = false; //used to determine if water pump is currently in use
 
 //inital settings
@@ -107,6 +119,16 @@ void setup()
     pinMode(ledWifiPin, OUTPUT);
     pinMode(ledWaterPin, OUTPUT);
     digitalWrite(ledWaterPin, LOW);
+
+    //power sensor pin setup
+    pinMode(waterSensorPowerPin1, OUTPUT);
+    pinMode(waterSensorPowerPin2, OUTPUT);
+    pinMode(soilSensorPowerPin1, OUTPUT);
+    pinMode(soilSensorPowerPin2, OUTPUT);
+    digitalWrite(waterSensorPowerPin1, LOW);
+    digitalWrite(waterSensorPowerPin2, HIGH);
+    digitalWrite(soilSensorPowerPin1, LOW);
+    digitalWrite(soilSensorPowerPin2, HIGH);
 
     //wifi defaults for cactus micro
     pinMode(13, OUTPUT);
@@ -212,11 +234,17 @@ void loop()
   waterSense = analogRead(waterPin);
   //potentiometer controlled manually, the threshold
   soilMoistureLimit = analogRead(soilPotPin);
-
+  waterPumpingLimit = analogRead(waterPotPin);
+  waterPumpDuration = map(waterPumpingLimit, 0, 1023, 5000, 60000); //5 to 60 seconds, controlled with potentiometer
+  
+  
   //output to console
   DEBUG_PRINTLN("CUSTOM SENSOR VALUES------------------");
   DEBUG_PRINT("Soil humidity threshold: ");
   DEBUG_PRINTDEC(soilMoistureLimit);
+  DEBUG_PRINTLN("");
+  DEBUG_PRINT("Water Pumping threshold: ");
+  DEBUG_PRINTDEC(waterPumpDuration);
   DEBUG_PRINTLN("");
   DEBUG_PRINT("Soil Sensor Value: ");
   DEBUG_PRINTDEC(soilSense);
@@ -288,13 +316,20 @@ void gotoSleep() {
   startPumping = false; //reset pump
   digitalWrite(pumpPin, LOW);  //disable pump 
 
-  //sleep until next wake-up 
-  DEBUG_PRINT("sleeping for: ");
-  DEBUG_PRINTDEC(sleepTime);
-  DEBUG_PRINTLN("");
-  delay(100); //delay to allow serial to fully print before sleep
-  sleep.pwrDownMode(); //set sleep mode
-  sleep.sleepDelay(sleepTime); //sleep for: sleepTime 
+  
+
+  #ifdef DEBUG
+    delay(2000); //delay to simulate sleep
+  #else
+    //sleep until next wake-up 
+    DEBUG_PRINT("sleeping for: ");
+    DEBUG_PRINTDEC(sleepTime);
+    DEBUG_PRINTLN("");
+    delay(100); //delay to allow serial to fully print before sleep
+    sleep.pwrDownMode(); //set sleep mode
+    sleep.sleepDelay(sleepTime); //sleep for: sleepTime
+  #endif
+  
 }
 
 void blinkWaterLed() {
@@ -363,4 +398,3 @@ void sendWaterAlert() {
    delay(1000);
    mySerial.println("AT+CIPCLOSE");
 }
-
