@@ -1,4 +1,4 @@
-//DYMXIØN HYDROPLANT V.0.2.2
+//DYMXIØN HYDROPLANT V.0.3.0
 //using cactus micro arduino compatible with wifi esp2866 by april brothers
 //http://wiki.aprbrother.com/wiki/Cactus_Micro
 
