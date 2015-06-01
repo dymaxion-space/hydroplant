@@ -23,8 +23,9 @@ Used to measure pumping duration
 Used for sleeping mode
 
 ##Versions
-###0.2.2
-* Fixes Major Bug: Pump runs during sleep -> oh, it's wet now, baby!
+###0.3.0
+* Works with new Board Layout
+* Improved Sensors, working with two pins to avoid corrosion 
 
 ##TODO
 * Add Photos
