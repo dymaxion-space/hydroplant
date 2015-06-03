@@ -177,31 +177,10 @@ boolean connectWifi() {
 void loop()
 {
 
-  //try to connect to wifi 
-  if(!wifiConnected) {
-    mySerial.println("AT");
-    delay(1000);
-    if(mySerial.find("OK")){
-      //Serial.println("Module Test: OK");
-      DEBUG_PRINTLN("Module Test: OK");
-      connectWifi();
-    } 
-  }
 
-  //if still not connected
-  if(!wifiConnected) {
-    delay(500);
-    return;
-    //turn off wifi notification led
-    digitalWrite(ledWifiPin , LOW);
-  }
 
-  //if wifi is connected -> light notification led
-  else {
-    digitalWrite(ledWifiPin , HIGH);
-    
-  }
-
+  //remove later if it still works without
+  /*
   //output everything from ESP8266 to the Arduino Micro Serial output
   //TODO: check disable after working implementation
   while (mySerial.available() > 0) {
@@ -228,6 +207,8 @@ void loop()
        mySerial.println(message); 
      }//if not AT command, ignore
   }
+  */
+
 
   //read soil & water sensors values
   soilSense = analogRead(soilPin);
@@ -352,7 +333,30 @@ void blinkWaterLed() {
 }
 
 void sendWaterAlert() {
-  //create start command
+  //try to connect to wifi 
+  if(!wifiConnected) {
+    mySerial.println("AT");
+    delay(1000);
+    if(mySerial.find("OK")){
+      //Serial.println("Module Test: OK");
+      DEBUG_PRINTLN("Module Test: OK");
+      connectWifi();
+    } 
+  }
+
+  //if still not connected
+  if(!wifiConnected) {
+    delay(500);
+    return;
+    //turn off wifi notification led
+    digitalWrite(ledWifiPin , LOW);
+  }
+
+  //if wifi is connected -> light notification led
+  else {
+    digitalWrite(ledWifiPin , HIGH);
+
+      //create start command
   String startcommand = "AT+CIPSTART=\"TCP\",\"koga.cx\", 80";
 
   mySerial.println(startcommand);
@@ -397,4 +401,11 @@ void sendWaterAlert() {
    mySerial.print(sendcommand);
    delay(1000);
    mySerial.println("AT+CIPCLOSE");
+   delay(5000);
+   digitalWrite(ledWifiPin , LOW); //turn off wifi led after sending message
+    
+  }
+
+
+
 }
