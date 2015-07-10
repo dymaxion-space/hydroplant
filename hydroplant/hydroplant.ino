@@ -353,6 +353,8 @@ void sendWaterAlert() {
   if(!wifiConnected) {
     delay(500);
     return;
+    connectWifi();
+    delay(1000);
     //turn off wifi notification led
     //digitalWrite(ledWifiPin , LOW);
   }
@@ -378,7 +380,7 @@ void sendWaterAlert() {
    sendcommand.concat("?devid=");
    sendcommand.concat(DEVID);
    sendcommand.concat("\r\n");
-    sendcommand.concat(" HTTP/1.0\r\n\r\n");
+    //sendcommand.concat(" HTTP/1.0\r\n\r\n");
    
    DEBUG_PRINTLN(sendcommand);
    
