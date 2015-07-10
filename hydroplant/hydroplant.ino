@@ -32,8 +32,8 @@ boolean sentNotification = false;
 //WIFI SETTINGS, 2.4 GHZ B-Mode!
 //If conection is not working, check that your wireless router is configured to support B-mode
 //Usually B/G/N-Mixed which should support all connection types (20Mhz seems to be preferred for B-Mode)
-#define SSID "change-this"
-#define PASS "change-me!"
+#define SSID "dymaxion-guest"
+#define PASS "buckm1nst3r!"
 
 //pushingbox device id, used to send email or mobile notifications (if water level is low -> refill needed)
 #define DEVID "v06CCA7D5005850A"
@@ -60,7 +60,7 @@ int waterPin = A6; //water level sensor analog input
 
 
 //potentiometer controls
-int soilPotPin = A1; //set the humidity limit with a potentiometer
+int soilPotPin = A10; //set the humidity limit with a potentiometer
 int waterPotPin = A2; //set the duration of pump (needs some mapping)
 
 //sensor power pins
@@ -80,7 +80,7 @@ unsigned long waterPumpDuration = 60000; //in ms, controlled via potentiometer (
 unsigned long notificationDuration = 14400000; //in ms -> adjust the duration in which interval you would like to receive a notification if plant needs water 
 
 //led if wifi is ready
-int ledWifiPin = 2;
+int ledWifiPin = 18;
 
 //water warning light
 int ledWaterPin = 6;
@@ -164,7 +164,7 @@ boolean connectWifi() {
      break;
    }
    
-   delay(50);
+   delay(1000);
  }
  DEBUG_PRINTLN(
    wifiConnected ? 
@@ -180,9 +180,10 @@ void loop()
 
 
   //remove later if it still works without
-  /*
+  
   //output everything from ESP8266 to the Arduino Micro Serial output
   //TODO: check disable after working implementation
+  /*
   while (mySerial.available() > 0) {
     Serial.write(mySerial.read());
   }
@@ -207,7 +208,7 @@ void loop()
        mySerial.println(message); 
      }//if not AT command, ignore
   }
-  */
+  */  
 
 
   //read soil & water sensors values
@@ -237,6 +238,7 @@ void loop()
   //check if the plant needs water
   if (soilSense <= soilMoistureLimit) {
     //if there still is enough water, pump it
+    digitalWrite(ledWifiPin, HIGH);
     if (waterSense > waterLowLimit) {
 
       //water is available -> reset notification
@@ -261,6 +263,9 @@ void loop()
 
     // otherwise send alert notification
     else {
+
+      digitalWrite(pumpPin, LOW); //disable pumping
+      startPumping = false;
 
       if (sentNotification == false) {
         notificationTimeElapsed = 0; //reset counter once for this notification cycle
@@ -300,7 +305,7 @@ void gotoSleep() {
   
 
   #ifdef DEBUG
-    delay(2000); //delay to simulate sleep
+    delay(20000); //delay to simulate sleep
   #else
     //sleep until next wake-up 
     DEBUG_PRINT("sleeping for: ");
@@ -349,12 +354,12 @@ void sendWaterAlert() {
     delay(500);
     return;
     //turn off wifi notification led
-    digitalWrite(ledWifiPin , LOW);
+    //digitalWrite(ledWifiPin , LOW);
   }
 
   //if wifi is connected -> light notification led
   else {
-    digitalWrite(ledWifiPin , HIGH);
+    //digitalWrite(ledWifiPin , HIGH);
 
       //create start command
   String startcommand = "AT+CIPSTART=\"TCP\",\"koga.cx\", 80";
@@ -373,7 +378,7 @@ void sendWaterAlert() {
    sendcommand.concat("?devid=");
    sendcommand.concat(DEVID);
    sendcommand.concat("\r\n");
-   //sendcommand.concat(" HTTP/1.0\r\n\r\n");
+    sendcommand.concat(" HTTP/1.0\r\n\r\n");
    
    DEBUG_PRINTLN(sendcommand);
    
@@ -402,7 +407,7 @@ void sendWaterAlert() {
    delay(1000);
    mySerial.println("AT+CIPCLOSE");
    delay(5000);
-   digitalWrite(ledWifiPin , LOW); //turn off wifi led after sending message
+   //digitalWrite(ledWifiPin , LOW); //turn off wifi led after sending message
     
   }
 
