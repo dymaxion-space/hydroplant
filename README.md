@@ -23,13 +23,6 @@ Used to measure pumping duration
 Used for sleeping mode
 
 ##Versions
-###0.3.2
-* improved sensor data
-* improved logic
-* better led notifications
-###0.3.1
-* fixed led bug with cacuts pin 7
-* fixed pumping error 
 ###0.3.0
 * Works with new Board Layout
 * Improved Sensors, working with two pins to avoid corrosion 
