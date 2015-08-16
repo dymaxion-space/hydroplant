@@ -1,4 +1,4 @@
-//DYMXIØN HYDROPLANT V.0.3.1
+//DYMXIØN HYDROPLANT V.0.3.2
 //using cactus micro arduino compatible with wifi esp2866 by april brothers
 //http://wiki.aprbrother.com/wiki/Cactus_Micro
 
@@ -16,6 +16,7 @@
 //elapsed millis
 elapsedMillis pumpTimeElapsed; //elapsed time of pump cycle
 elapsedMillis notificationTimeElapsed; //elapsed time of notification cycle
+elapsedMillis senseTimeElapsed;
 
 //sleep
 Sleep sleep;
@@ -41,16 +42,16 @@ boolean sentNotification = false;
 //like e-mail, twitter, android and iphone notification
 
 //DEBUG SETTINGS
-//#define DEBUG 1 //uncomment to enable debug
+#define DEBUG 1 //uncomment to enable debug
 
 #ifdef DEBUG
-#define DEBUG_PRINT(x)     Serial.print(x)
-#define DEBUG_PRINTDEC(x)     Serial.print(x, DEC)
-#define DEBUG_PRINTLN(x)  Serial.println(x)
-#else
-#define DEBUG_PRINT(x)
-#define DEBUG_PRINTDEC(x)
-#define DEBUG_PRINTLN(x) 
+  #define DEBUG_PRINT(x)     Serial.print(x)
+  #define DEBUG_PRINTDEC(x)     Serial.print(x, DEC)
+  #define DEBUG_PRINTLN(x)  Serial.println(x)
+  #else
+  #define DEBUG_PRINT(x)
+  #define DEBUG_PRINTDEC(x)
+  #define DEBUG_PRINTLN(x) 
 #endif
 
 
@@ -72,12 +73,13 @@ int soilSensorPowerPin2 = 9;
 
 int soilSense = 0; //stores soil moisture sensed value (0-1024)
 int waterSense = 0; //stores water level sensed value (0-1024)
-int waterLowLimit = 100; //stop pump -> send alert, make slightly higher then 0 to avoid jitter 
+int waterLowLimit = 50; //stop pump -> send alert, make slightly higher then 0 to avoid jitter 
 int soilMoistureLimit = 150; //change this according to your plant (0-100 is really dry, 350-500 is rather normal)
 int waterPumpingLimit = 200;
 
 unsigned long waterPumpDuration = 60000; //in ms, controlled via potentiometer (5000-6000 ms)
-unsigned long notificationDuration = 3600000; //in ms -> adjust the duration in which interval you would like to receive a notification if plant needs water 
+unsigned long notificationDuration = 120000; //in ms -> adjust the duration in which interval you would like to receive a notification if plant needs water 
+unsigned long senseTimeDuration = 2000; //only used as led blink timer notification
 
 //led if wifi is ready
 int ledPlantPin = 18;
@@ -127,9 +129,9 @@ void setup()
     pinMode(soilSensorPowerPin1, OUTPUT);
     pinMode(soilSensorPowerPin2, OUTPUT);
     digitalWrite(waterSensorPowerPin1, LOW);
-    digitalWrite(waterSensorPowerPin2, HIGH);
+    digitalWrite(waterSensorPowerPin2, LOW);
     digitalWrite(soilSensorPowerPin1, LOW);
-    digitalWrite(soilSensorPowerPin2, HIGH);
+    digitalWrite(soilSensorPowerPin2, LOW);
 
     //wifi defaults for cactus micro
     pinMode(13, OUTPUT);
@@ -143,7 +145,6 @@ void setup()
     delay(300);
     mySerial.println("AT+RST");
     delay(500);
-
 }
 
 boolean connectWifi() {     
@@ -180,17 +181,25 @@ void loop()
 
 
 
-  //read soil & water sensors values
-  soilSense = analogRead(soilPin);
-  waterSense = analogRead(waterPin);
+  //read water sensor value
+  digitalWrite(waterSensorPowerPin2, HIGH);
+  waterSense = int(readSensorAverage(waterPin));
+  digitalWrite(waterSensorPowerPin2, LOW);
+
+  //read soil here only in debug mode, because not needed if there is no water
+  #ifdef DEBUG
+    digitalWrite(soilSensorPowerPin2, HIGH);
+    soilSense = int(readSensorAverage(soilPin));
+    digitalWrite(soilSensorPowerPin2, LOW);
+  #endif
+
   //potentiometer controlled manually, the threshold
   soilMoistureLimit = analogRead(soilPotPin);
   waterPumpingLimit = analogRead(waterPotPin);
   waterPumpDuration = map(waterPumpingLimit, 0, 1023, 5000, 60000); //5 to 60 seconds, controlled with potentiometer
-  
-  
+ 
+
   //output to console
-  
   DEBUG_PRINTLN("CUSTOM SENSOR VALUES------------------");
   DEBUG_PRINT("Soil humidity threshold: ");
   DEBUG_PRINTDEC(soilMoistureLimit);
@@ -198,22 +207,40 @@ void loop()
   DEBUG_PRINT("Water Pumping threshold: ");
   DEBUG_PRINTDEC(waterPumpDuration);
   DEBUG_PRINTLN("");
-  DEBUG_PRINT("Soil Sensor Value: ");
-  DEBUG_PRINTDEC(soilSense);
-  DEBUG_PRINTLN("");
   DEBUG_PRINT("Water Sensor Value: ");
   DEBUG_PRINTDEC(waterSense);
   DEBUG_PRINTLN("");
-
+  DEBUG_PRINT("Soil Sensor Value: ");
+  DEBUG_PRINTDEC(soilSense);
+  DEBUG_PRINTLN("");  
+  
   #ifdef DEBUG
-    delay(1000); 
-  #endif  
+    delay(1000);
+  #endif
 
   if (waterSense > waterLowLimit) {
-    //has water available
-    
+    //has water available 
+
+    //if not yet pumping, show sensing notification
+    if (startPumping == false) {
+        //-> read soil sensor once (average of 100 measurements)
+        digitalWrite(soilSensorPowerPin2, HIGH);
+        soilSense = int(readSensorAverage(soilPin));
+        digitalWrite(soilSensorPowerPin2, LOW);
+
+        senseTimeElapsed = 0;
+        while(senseTimeElapsed < senseTimeDuration ){
+            digitalWrite(ledWaterPin, LOW);
+            blinkPlantLed(100);
+            DEBUG_PRINTLN("blinkPlantLed");
+        }  
+    }
+
     if (soilSense <= soilMoistureLimit) {
       //give water
+      //disable plant led
+      //digitalWrite(ledPlantPin, LOW);
+
 
       //water is available -> reset notification
       sentNotification = false; 
@@ -231,7 +258,7 @@ void loop()
         digitalWrite(ledPlantPin, LOW);
         blinkWaterLed(50);
         digitalWrite(pumpPin, HIGH); //pump some water
-        //DEBUG_PRINTLN("currently pumping");
+        DEBUG_PRINTLN("currently pumping");
       }  
 
 
@@ -262,7 +289,7 @@ void loop()
   
       //blink water notification light
       digitalWrite(ledPlantPin, LOW);
-      blinkWaterLed(250);
+      blinkWaterLed(250); 
   }
   
 
@@ -270,8 +297,17 @@ void loop()
 
 void gotoSleep() {
   //disable leds
-  digitalWrite(ledWaterPin, LOW);
-  digitalWrite(ledPlantPin, HIGH);
+  digitalWrite(ledPlantPin, LOW); //disable green light
+  digitalWrite(ledWaterPin, HIGH); //show blue light during sleep (has power and water)
+
+  //disable power for sensors - change current flow to prevent corrosion
+  digitalWrite(waterSensorPowerPin2, LOW);
+  digitalWrite(soilSensorPowerPin2, LOW);
+  digitalWrite(waterSensorPowerPin1, HIGH);
+  digitalWrite(soilSensorPowerPin1, HIGH);
+  delay(20);
+  digitalWrite(waterSensorPowerPin1, LOW);
+  digitalWrite(soilSensorPowerPin1, LOW);
 
   //reset pump
   startPumping = false; //reset pump
@@ -296,6 +332,44 @@ void gotoSleep() {
   #endif
   
 }
+
+
+#define NUM_READS 100
+float readSensorAverage(int sensorpin){
+   // read multiple values and sort them to take the mode
+
+   int sortedValues[NUM_READS];
+   for(int i=0;i<NUM_READS;i++){
+     int value = analogRead(sensorpin);
+     int j;
+     if(value<sortedValues[0] || i==0){
+        j=0; //insert at first position
+     }
+     else{
+       for(j=1;j<i;j++){
+          if(sortedValues[j-1]<=value && sortedValues[j]>=value){
+            // j is insert position
+            break;
+          }
+       }
+     }
+     for(int k=i;k>j;k--){
+       // move all values higher than current reading up one position
+       sortedValues[k]=sortedValues[k-1];
+     }
+     sortedValues[j]=value; //insert current reading
+     
+   }
+   //return scaled mode of 10 values
+   float returnval = 0;
+   for(int i=NUM_READS/2-5;i<(NUM_READS/2+5);i++){
+     returnval +=sortedValues[i];
+   }
+   returnval = returnval/10;
+   //return returnval*1100/1023;
+   return returnval;
+}
+
 
 void blinkWaterLed(int interval) {
   //enable water notification, blink water
@@ -355,24 +429,24 @@ void sendWaterAlert() {
     connectWifi();
     delay(1000);
     //turn off wifi notification led
-    //digitalWrite(ledPlantPin , LOW);
+    digitalWrite(ledPlantPin , LOW);
   }
 
   //if wifi is connected -> light notification led
   else {
-    //digitalWrite(ledPlantPin , HIGH);
+    digitalWrite(ledPlantPin , HIGH);
 
       //create start command
-  String startcommand = "AT+CIPSTART=\"TCP\",\"koga.cx\", 80";
+    String startcommand = "AT+CIPSTART=\"TCP\",\"koga.cx\", 80";
 
-  mySerial.println(startcommand);
-  DEBUG_PRINTLN(startcommand);
+    mySerial.println(startcommand);
+    DEBUG_PRINTLN(startcommand);
 
    //test for a start error
-   if(mySerial.find("Error")){
-      DEBUG_PRINTLN("error on start");
-      return;
-   }
+    if(mySerial.find("Error")){
+        DEBUG_PRINTLN("error on start");
+        return;
+     }
    
    //create the request command
    String sendcommand = "GET /pushingbox.php"; 
@@ -408,7 +482,7 @@ void sendWaterAlert() {
    delay(1000);
    mySerial.println("AT+CIPCLOSE");
    delay(5000);
-   //digitalWrite(ledPlantPin , LOW); //turn off wifi led after sending message
+   digitalWrite(ledPlantPin , LOW); //turn off wifi led after sending message
     
   }
 
